@@ -1,6 +1,6 @@
 workflows:
-  ios-build-salles-atelie:
-    name: Build Salles Atelie for AltStore
+  ios-build-green-manager:
+    name: Build Green Manager for iOS
     instance_type: mac_mini_m2
     environment:
       node: 20.11.0
@@ -11,53 +11,54 @@ workflows:
         - ~/.npm
         - node_modules
     scripts:
-      - name: Clean Install com Correções de Segurança
+      - name: Clean Install com Correções
         script: |
           # Limpeza completa
           echo "🧹 Limpando cache e módulos antigos..."
           rm -rf node_modules package-lock.json
           npm cache clean --force
           
-          # Instalar npm atualizado e TypeScript globalmente
-          echo "📦 Atualizando npm e instalando TypeScript global..."
-          npm install -g npm@10.8.1 typescript@5.5.4
+          # Instalar npm atualizado
+          echo "📦 Atualizando npm..."
+          npm install -g npm@10.8.1
           
           # Criar lockfile primeiro
           echo "🔒 Criando package-lock.json..."
-          npm i --package-lock-only
+          npm install --package-lock-only --ignore-scripts
           
-          # Instalar com auditoria
-          echo "🔒 Instalando dependências com correções..."
-          npm install --audit --fund=false
+          # Instalar dependências
+          echo "📦 Instalando dependências..."
+          npm install
           
-          # Forçar correções de segurança (ignorando erro de lockfile)
-          echo "🛡️ Aplicando correções de vulnerabilidades..."
-          npm audit fix || true
+          # Instalar TypeScript localmente (não global)
+          echo "🔧 Instalando TypeScript..."
+          npm install --save-dev typescript@5.5.4
           
-          # Verificar se ainda há vulnerabilidades
-          echo "📊 Relatório de segurança:"
-          npm audit --json || true
-          
-          # Instalar Capacitor com versões específicas
+          # Instalar Capacitor
           echo "⚡ Instalando Capacitor..."
           npm install @capacitor/core@6.1.0 @capacitor/cli@6.1.0 @capacitor/ios@6.1.0 @capacitor/assets@3.0.5
           
-          # Verificar se TypeScript está instalado
-          echo "🔍 Verificando instalação do TypeScript..."
-          npx tsc --version || npm install -g typescript@5.5.4
+          # Verificar instalação
+          echo "✅ Verificando instalações..."
+          npx tsc --version
+          npx cap --version || true
           
-          # Build do projeto web
+          # Build
           echo "🏗️ Build da aplicação..."
-          npm run build --if-present
+          npm run build
 
       - name: Setup iOS Project
         script: |
           # Detectar pasta de build
-          WEB_DIR="dist"
-          if [ -d "build" ]; then
+          if [ -d "dist" ]; then
+            WEB_DIR="dist"
+          elif [ -d "build" ]; then
             WEB_DIR="build"
           elif [ -d "www" ]; then
             WEB_DIR="www"
+          else
+            WEB_DIR="dist"
+            mkdir -p dist
           fi
           
           echo "📱 Usando web directory: $WEB_DIR"
@@ -67,21 +68,16 @@ workflows:
           
           # Inicializar Capacitor
           echo "⚙️ Inicializando projeto iOS..."
-          npx cap init "Salles Atelie" "com.salles.atelie" --web-dir $WEB_DIR
+          npx cap init "Green Manager" "com.green.manager" --web-dir $WEB_DIR
           npx cap add ios
           npx cap sync ios
           
           # Gerar assets
           echo "🎨 Gerando assets..."
-          npx capacitor-assets generate --ios --icon-background "#FFFFFF" --splash-background "#FFFFFF" || true
+          npx capacitor-assets generate --ios || true
 
       - name: Build IPA Sem Assinatura
         script: |
-          if [ ! -d "ios/App" ]; then
-            echo "❌ ERRO: Pasta ios/App não encontrada!"
-            exit 1
-          fi
-          
           cd ios/App
           
           echo "📦 Instalando pods..."
@@ -101,33 +97,18 @@ workflows:
             PROVISIONING_PROFILE_SPECIFIER="" \
             CODE_SIGN_STYLE=Manual
           
-          # Criar IPA
-          echo "📦 Criando arquivo IPA..."
+          echo "📦 Criando IPA..."
           mkdir -p Payload
-          
-          # Encontrar o .app
           APP_PATH=$(find ./build_output -name "*.app" | head -n 1)
           
           if [ -z "$APP_PATH" ]; then
-            echo "❌ ERRO: Arquivo .app não encontrado!"
-            ls -la ./build_output/Build/Products/Release-iphoneos/ || true
+            echo "❌ ERRO: .app não encontrado!"
             exit 1
           fi
           
-          echo "✅ App encontrado em: $APP_PATH"
-          
-          # Copiar e zipar
           cp -R "$APP_PATH" Payload/
-          zip -r SallesAtelie.ipa Payload
-          
-          # Mover para raiz
-          mv SallesAtelie.ipa ../../
-          
-          echo "✅ Build concluído com sucesso!"
+          zip -r GreenManager.ipa Payload
+          mv GreenManager.ipa ../../
 
     artifacts:
       - "*.ipa"
-    publishing:
-      email:
-        recipients:
-          - seu-email@gmail.com
