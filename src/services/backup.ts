@@ -1,8 +1,7 @@
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
 import { DatabaseService } from './database';
-import { BackupData, Reminder, ShoppingList, Transaction, FinanceCategory } from '../types';
-import { v4 as uuidv4 } from 'uuid';
+import { BackupData } from '../types';
 
 export class BackupService {
   private static instance: BackupService;
@@ -113,7 +112,7 @@ export class BackupService {
         for (const cat of backupData.data.categories) {
           await database.run(
             'INSERT OR REPLACE INTO finance_categories (id, name, type, icon, color, is_default, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [cat.id, cat.name, cat.type, cat.icon, cat.color, cat.is_default || 0, cat.created_at]
+            [cat.id, cat.name, cat.type, cat.icon, cat.color, cat.isDefault ? 1 : 0, cat.createdAt || new Date().toISOString()]
           );
         }
 
@@ -121,7 +120,7 @@ export class BackupService {
         for (const trans of backupData.data.transactions) {
           await database.run(
             'INSERT INTO transactions (id, description, amount, type, category_id, date, notes, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            [trans.id, trans.description, trans.amount, trans.type, trans.category_id, trans.date, trans.notes, trans.created_at]
+            [trans.id, trans.description, trans.amount, trans.type, trans.categoryId, trans.date, trans.notes, trans.createdAt || new Date().toISOString()]
           );
         }
 
@@ -129,7 +128,7 @@ export class BackupService {
         for (const rem of backupData.data.reminders) {
           await database.run(
             'INSERT INTO reminders (id, title, description, due_date, completed, completed_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [rem.id, rem.title, rem.description, rem.due_date, rem.completed, rem.completed_at, rem.created_at]
+            [rem.id, rem.title, rem.description, rem.dueDate, rem.completed, rem.completedAt, rem.createdAt || new Date().toISOString()]
           );
         }
 
@@ -137,13 +136,13 @@ export class BackupService {
         for (const list of backupData.data.shoppingLists) {
           await database.run(
             'INSERT INTO shopping_lists (id, name, created_at) VALUES (?, ?, ?)',
-            [list.id, list.name, list.created_at]
+            [list.id, list.name, list.createdAt || new Date().toISOString()]
           );
 
           for (const item of list.items) {
             await database.run(
               'INSERT INTO shopping_items (id, list_id, name, quantity, completed, completed_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-              [item.id, list.id, item.name, item.quantity, item.completed, item.completed_at, item.created_at]
+              [item.id, list.id, item.name, item.quantity, item.completed, item.completedAt, item.createdAt || new Date().toISOString()]
             );
           }
         }
@@ -180,7 +179,7 @@ export class BackupService {
           name: file.name,
           path: `Documents/${file.name}`,
           size: file.size || 0,
-          modified: file.modified || 0
+          modified: Date.now() // fallback
         }))
         .sort((a, b) => b.modified - a.modified);
 
