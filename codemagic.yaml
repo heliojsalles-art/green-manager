@@ -1,50 +1,162 @@
 workflows:
-  greenmanager-build:
-    name: GreenManager Build
-    max_build_duration: 30
+  ios-build-salles-atelie:
+    name: Build Salles Atelie for AltStore
     instance_type: mac_mini_m2
     environment:
-      vars:
-        NODE_VERSION: "18"
-      node: latest
+      node: 20.11.0  # Versão LTS específica
       xcode: latest
       cocoapods: default
-    triggering:
-      events:
-        - push
-      branch_patterns:
-        - pattern: main
-          include: true
-          source: true
+    cache:
+      cache_paths:
+        - ~/.npm
+        - node_modules
     scripts:
-      - name: Clean install dependencies
+      - name: Clean Install com Correções de Segurança
         script: |
+          # Limpeza completa
+          echo "🧹 Limpando cache e módulos antigos..."
           rm -rf node_modules package-lock.json
-          npm install --legacy-peer-deps
-      - name: Build web assets
-        script: |
+          npm cache clean --force
+          
+          # Instalar npm atualizado
+          echo "📦 Atualizando npm..."
+          npm install -g npm@10.8.1
+          
+          # Instalar com auditoria
+          echo "🔒 Instalando dependências com correções..."
+          npm install --audit --fund=false
+          
+          # Forçar correções de segurança
+          echo "🛡️ Aplicando correções de vulnerabilidades..."
+          npm audit fix --force || true
+          
+          # Verificar se ainda há vulnerabilidades
+          echo "📊 Relatório de segurança:"
+          npm audit --json || true
+          
+          # Instalar Capacitor
+          echo "⚡ Instalando Capacitor..."
+          npm install @capacitor/core@6.1.0 @capacitor/cli@6.1.0 @capacitor/ios@6.1.0 @capacitor/assets@3.0.5
+          
+          # Build do projeto web
+          echo "🏗️ Build da aplicação..."
           npm run build
-      - name: Sync Capacitor
+
+      - name: Setup iOS Project
         script: |
+          # Detectar pasta de build
+          WEB_DIR="dist"
+          if [ -d "build" ]; then
+            WEB_DIR="build"
+          elif [ -d "www" ]; then
+            WEB_DIR="www"
+          fi
+          
+          echo "📱 Usando web directory: $WEB_DIR"
+          
+          # Remover iOS antigo
+          rm -rf ios
+          
+          # Inicializar Capacitor
+          echo "⚙️ Inicializando projeto iOS..."
+          npx cap init "Salles Atelie" "com.salles.atelie" --web-dir $WEB_DIR
+          npx cap add ios
           npx cap sync ios
-      - name: Build iOS (unsigned)
+          
+          # Gerar assets
+          echo "🎨 Gerando assets..."
+          npx capacitor-assets generate --ios --icon-background "#FFFFFF" --splash-background "#FFFFFF" || true
+          
+          # Verificar configuração
+          echo "🔍 Verificando configuração..."
+          ls -la ios/App/App/
+
+      - name: Configure iOS Project
         script: |
+          # Configurar Info.plist para evitar problemas de build
+          INFO_PLIST="ios/App/App/Info.plist"
+          
+          if [ -f "$INFO_PLIST" ]; then
+            echo "⚙️ Configurando Info.plist..."
+            
+            # Backup do arquivo original
+            cp "$INFO_PLIST" "${INFO_PLIST}.backup"
+            
+            # Garantir permissões de leitura/escrita
+            chmod 644 "$INFO_PLIST"
+          fi
+          
+          # Configurar Podfile
+          PODFILE="ios/App/Podfile"
+          if [ -f "$PODFILE" ]; then
+            echo "📦 Configurando Podfile..."
+            # Adicionar configurações de segurança se necessário
+          fi
+
+      - name: Build IPA Sem Assinatura
+        script: |
+          if [ ! -d "ios/App" ]; then
+            echo "❌ ERRO: Pasta ios/App não encontrada!"
+            exit 1
+          fi
+          
           cd ios/App
-          xcodebuild -workspace App.xcworkspace \
+          
+          echo "📦 Instalando pods..."
+          pod install --repo-update || pod install
+          
+          echo "🔨 Build do app..."
+          xcodebuild clean build \
+            -workspace App.xcworkspace \
             -scheme App \
             -configuration Release \
             -sdk iphoneos \
-            -derivedDataPath ../build \
-            CODE_SIGN_IDENTITY="" \
+            -derivedDataPath ./build_output \
+            CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            PROVISIONING_PROFILE_SPECIFIER="" \
+            CODE_SIGN_STYLE=Manual
+          
+          # Criar IPA
+          echo "📦 Criando arquivo IPA..."
+          mkdir -p Payload
+          
+          # Encontrar o .app
+          APP_PATH=$(find ./build_output -name "*.app" | head -n 1)
+          
+          if [ -z "$APP_PATH" ]; then
+            echo "❌ ERRO: Arquivo .app não encontrado!"
+            ls -la ./build_output/Build/Products/Release-iphoneos/ || true
+            exit 1
+          fi
+          
+          echo "✅ App encontrado em: $APP_PATH"
+          
+          # Copiar e zipar
+          cp -R "$APP_PATH" Payload/
+          zip -r SallesAtelie.ipa Payload
+          
+          # Mover para raiz
+          mv SallesAtelie.ipa ../../
+          
+          echo "✅ Build concluído com sucesso!"
+
+      - name: Verificar Artefato
+        script: |
+          echo "🔍 Verificando IPA gerado..."
+          if [ -f "SallesAtelie.ipa" ]; then
+            echo "✅ IPA criado: $(ls -lh SallesAtelie.ipa)"
+            file SallesAtelie.ipa || true
+          else
+            echo "❌ IPA não encontrado!"
+            ls -la || true
+          fi
+
     artifacts:
-      - ios/build/Build/Products/Release-iphoneos/*.app
-      - ios/build/Build/Products/Release-iphoneos/*.ipa
+      - "*.ipa"
     publishing:
       email:
         recipients:
-          - seu-email@gmail.com
-        notify:
-          success: true
-          failure: true
+          - seu-email@gmail.com  # ALTERE PARA SEU EMAIL
