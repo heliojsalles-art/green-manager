@@ -29,10 +29,11 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      '@theme': path.resolve(__dirname, './src/theme'),
+      '@pages': path.resolve(__dirname, './src/pages'),
       '@components': path.resolve(__dirname, './src/components'),
       '@services': path.resolve(__dirname, './src/services'),
-      '@pages': path.resolve(__dirname, './src/pages')
+      '@theme': path.resolve(__dirname, './src/theme'),
+      '@types': path.resolve(__dirname, './src/types')
     }
   },
   server: {
