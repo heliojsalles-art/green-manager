@@ -29,9 +29,9 @@ import {
   listOutline,
   trashOutline
 } from 'ionicons/icons';
-import { BackupService } from '../services/backup';
-import { CategoryService } from '../services/categories';
-import { DatabaseService } from '../services/database';
+import BackupService from '../services/backup';
+import CategoryService from '../services/categories';
+import DatabaseService from '../services/database';
 import { Preferences } from '@capacitor/preferences';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 
@@ -98,38 +98,6 @@ const Settings: React.FC = () => {
     setShowToast(true);
   };
 
-  const handleImportBackup = async (filePath: string) => {
-    setLoading(true);
-    const result = await backupService.importBackup(filePath);
-    setLoading(false);
-    
-    setToastMessage(result.success ? 'Backup importado com sucesso!' : 'Erro ao importar backup');
-    setShowToast(true);
-    setShowBackupModal(false);
-  };
-
-  const handleDeleteBackup = async (filePath: string) => {
-    setSelectedBackup(filePath);
-    setShowDeleteConfirm(true);
-  };
-
-  const confirmDeleteBackup = async () => {
-    setLoading(true);
-    try {
-      await Filesystem.deleteFile({
-        path: selectedBackup,
-        directory: Directory.Documents
-      });
-      setToastMessage('Backup excluído com sucesso!');
-      loadBackups();
-    } catch (error) {
-      setToastMessage('Erro ao excluir backup');
-    }
-    setLoading(false);
-    setShowDeleteConfirm(false);
-    setShowToast(true);
-  };
-
   const handleClearAllData = async () => {
     setLoading(true);
     try {
@@ -141,7 +109,6 @@ const Settings: React.FC = () => {
         await database.run('DELETE FROM shopping_items');
         await database.run('DELETE FROM shopping_lists');
         await database.run('DELETE FROM transactions');
-        // Manter categorias padrão
         await database.run('DELETE FROM finance_categories WHERE is_default = 0');
         
         setToastMessage('Dados limpos com sucesso!');
@@ -213,26 +180,14 @@ const Settings: React.FC = () => {
                   </IonList>
                 </IonCardContent>
               </IonCard>
-
-              <IonCard>
-                <IonCardContent>
-                  <h3 style={{ color: '#4CAF50', marginBottom: '16px' }}>Sobre o App</h3>
-                  <p><strong>GreenManager</strong> - Versão 1.0.0</p>
-                  <p style={{ color: '#666', fontSize: '14px' }}>
-                    App desenvolvido para organizar sua vida com um toque verde.
-                    Combine perfeitamente com seu iPhone 15 Verde! 🌿
-                  </p>
-                </IonCardContent>
-              </IonCard>
             </IonCol>
           </IonRow>
         </IonGrid>
 
-        {/* Modal de Backup */}
         <IonModal isOpen={showBackupModal} onDidDismiss={() => setShowBackupModal(false)}>
           <IonHeader>
             <IonToolbar>
-              <IonTitle>Importar Backup</IonTitle>
+              <IonTitle>Backups Disponíveis</IonTitle>
               <IonButton slot="end" fill="clear" onClick={() => setShowBackupModal(false)}>
                 Fechar
               </IonButton>
@@ -248,15 +203,9 @@ const Settings: React.FC = () => {
                 backups.map((backup, index) => (
                   <IonItem key={index}>
                     <IonLabel>
-                      <h3>{backup.name}</h3>
+                      <h2>{backup.name}</h2>
                       <p>Tamanho: {(backup.size / 1024).toFixed(2)} KB</p>
                     </IonLabel>
-                    <IonButton fill="clear" onClick={() => handleImportBackup(backup.path)}>
-                      Importar
-                    </IonButton>
-                    <IonButton fill="clear" color="danger" onClick={() => handleDeleteBackup(backup.path)}>
-                      <IonIcon icon={trashOutline} />
-                    </IonButton>
                   </IonItem>
                 ))
               )}
@@ -264,11 +213,10 @@ const Settings: React.FC = () => {
           </IonContent>
         </IonModal>
 
-        {/* Modal de Categorias */}
         <IonModal isOpen={showCategoryModal} onDidDismiss={() => setShowCategoryModal(false)}>
           <IonHeader>
             <IonToolbar>
-              <IonTitle>Categorias Financeiras</IonTitle>
+              <IonTitle>Categorias</IonTitle>
               <IonButton slot="end" fill="clear" onClick={() => setShowCategoryModal(false)}>
                 Fechar
               </IonButton>
@@ -278,37 +226,15 @@ const Settings: React.FC = () => {
             <IonList>
               {categories.map(cat => (
                 <IonItem key={cat.id}>
-                  <IonIcon 
-                    icon={cat.icon || 'pricetag-outline'} 
-                    slot="start" 
-                    style={{ color: cat.color || '#4CAF50' }} 
-                  />
                   <IonLabel>
-                    <h3>{cat.name}</h3>
+                    <h2>{cat.name}</h2>
                     <p>{cat.type === 'income' ? 'Receita' : 'Despesa'}</p>
                   </IonLabel>
-                  {!cat.isDefault && (
-                    <IonButton fill="clear" color="danger">
-                      <IonIcon icon={trashOutline} />
-                    </IonButton>
-                  )}
                 </IonItem>
               ))}
             </IonList>
           </IonContent>
         </IonModal>
-
-        {/* Alert de Confirmação */}
-        <IonAlert
-          isOpen={showDeleteConfirm}
-          onDidDismiss={() => setShowDeleteConfirm(false)}
-          header="Confirmar"
-          message="Deseja realmente excluir este backup?"
-          buttons={[
-            { text: 'Cancelar', role: 'cancel' },
-            { text: 'Excluir', handler: confirmDeleteBackup }
-          ]}
-        />
       </IonContent>
     </IonPage>
   );
