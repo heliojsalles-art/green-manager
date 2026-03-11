@@ -32,7 +32,15 @@ export class CategoryService {
     query += ' ORDER BY name';
 
     const result = await database.query(query, params);
-    return result.values || [];
+    
+    // Mapear os resultados para o formato esperado
+    const categories = (result.values || []).map(cat => ({
+      ...cat,
+      isDefault: cat.is_default === 1,
+      createdAt: cat.created_at
+    }));
+
+    return categories;
   }
 
   async addCategory(category: Omit<FinanceCategory, 'id' | 'createdAt' | 'isDefault'>): Promise<string> {
@@ -122,7 +130,16 @@ export class CategoryService {
       [id]
     );
 
-    return result.values?.[0] || null;
+    if (result.values?.[0]) {
+      const cat = result.values[0];
+      return {
+        ...cat,
+        isDefault: cat.is_default === 1,
+        createdAt: cat.created_at
+      };
+    }
+
+    return null;
   }
 
   async getCategoryStats(): Promise<{
