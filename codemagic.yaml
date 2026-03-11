@@ -3,7 +3,7 @@ workflows:
     name: Build Salles Atelie for AltStore
     instance_type: mac_mini_m2
     environment:
-      node: 20.11.0  # Versão LTS específica
+      node: 20.11.0
       xcode: latest
       cocoapods: default
     cache:
@@ -18,29 +18,37 @@ workflows:
           rm -rf node_modules package-lock.json
           npm cache clean --force
           
-          # Instalar npm atualizado
-          echo "📦 Atualizando npm..."
-          npm install -g npm@10.8.1
+          # Instalar npm atualizado e TypeScript globalmente
+          echo "📦 Atualizando npm e instalando TypeScript global..."
+          npm install -g npm@10.8.1 typescript@5.5.4
+          
+          # Criar lockfile primeiro
+          echo "🔒 Criando package-lock.json..."
+          npm i --package-lock-only
           
           # Instalar com auditoria
           echo "🔒 Instalando dependências com correções..."
           npm install --audit --fund=false
           
-          # Forçar correções de segurança
+          # Forçar correções de segurança (ignorando erro de lockfile)
           echo "🛡️ Aplicando correções de vulnerabilidades..."
-          npm audit fix --force || true
+          npm audit fix || true
           
           # Verificar se ainda há vulnerabilidades
           echo "📊 Relatório de segurança:"
           npm audit --json || true
           
-          # Instalar Capacitor
+          # Instalar Capacitor com versões específicas
           echo "⚡ Instalando Capacitor..."
           npm install @capacitor/core@6.1.0 @capacitor/cli@6.1.0 @capacitor/ios@6.1.0 @capacitor/assets@3.0.5
           
+          # Verificar se TypeScript está instalado
+          echo "🔍 Verificando instalação do TypeScript..."
+          npx tsc --version || npm install -g typescript@5.5.4
+          
           # Build do projeto web
           echo "🏗️ Build da aplicação..."
-          npm run build
+          npm run build --if-present
 
       - name: Setup iOS Project
         script: |
@@ -66,32 +74,6 @@ workflows:
           # Gerar assets
           echo "🎨 Gerando assets..."
           npx capacitor-assets generate --ios --icon-background "#FFFFFF" --splash-background "#FFFFFF" || true
-          
-          # Verificar configuração
-          echo "🔍 Verificando configuração..."
-          ls -la ios/App/App/
-
-      - name: Configure iOS Project
-        script: |
-          # Configurar Info.plist para evitar problemas de build
-          INFO_PLIST="ios/App/App/Info.plist"
-          
-          if [ -f "$INFO_PLIST" ]; then
-            echo "⚙️ Configurando Info.plist..."
-            
-            # Backup do arquivo original
-            cp "$INFO_PLIST" "${INFO_PLIST}.backup"
-            
-            # Garantir permissões de leitura/escrita
-            chmod 644 "$INFO_PLIST"
-          fi
-          
-          # Configurar Podfile
-          PODFILE="ios/App/Podfile"
-          if [ -f "$PODFILE" ]; then
-            echo "📦 Configurando Podfile..."
-            # Adicionar configurações de segurança se necessário
-          fi
 
       - name: Build IPA Sem Assinatura
         script: |
@@ -143,20 +125,9 @@ workflows:
           
           echo "✅ Build concluído com sucesso!"
 
-      - name: Verificar Artefato
-        script: |
-          echo "🔍 Verificando IPA gerado..."
-          if [ -f "SallesAtelie.ipa" ]; then
-            echo "✅ IPA criado: $(ls -lh SallesAtelie.ipa)"
-            file SallesAtelie.ipa || true
-          else
-            echo "❌ IPA não encontrado!"
-            ls -la || true
-          fi
-
     artifacts:
       - "*.ipa"
     publishing:
       email:
         recipients:
-          - seu-email@gmail.com  # ALTERE PARA SEU EMAIL
+          - seu-email@gmail.com
