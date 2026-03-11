@@ -4,17 +4,17 @@ import { IonReactRouter } from '@ionic/react-router';
 import { Route } from 'react-router-dom';
 
 // Importar páginas
-import Home from '@pages/Home';
-import Reminders from '@pages/Reminders';
-import ShoppingLists from '@pages/ShoppingLists';
-import Finances from '@pages/Finances';
-import Settings from '@pages/Settings';
+import Home from './pages/Home';
+import Reminders from './pages/Reminders';
+import ShoppingLists from './pages/ShoppingLists';
+import Finances from './pages/Finances';
+import Settings from './pages/Settings';
 
 // Importar componentes
-import Menu from '@components/common/Menu';
+import Menu from './components/common/Menu';
 
 // Importar serviços
-import { DatabaseService } from '@services/database';
+import { DatabaseService } from './services/database';
 
 setupIonicReact();
 
