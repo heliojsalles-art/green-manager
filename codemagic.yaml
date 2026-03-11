@@ -1,6 +1,6 @@
 workflows:
-  ios-build:
-    name: iOS Build (Unsigned)
+  greenmanager-build:
+    name: GreenManager Build
     max_build_duration: 30
     instance_type: mac_mini_m2
     environment:
@@ -12,23 +12,19 @@ workflows:
     triggering:
       events:
         - push
-        - tag
       branch_patterns:
         - pattern: main
           include: true
           source: true
     scripts:
-      - name: Install Node dependencies
+      - name: Clean install dependencies
         script: |
+          rm -rf node_modules package-lock.json
           npm install --legacy-peer-deps
       - name: Build web assets
         script: |
           npm run build
-      - name: Install CocoaPods dependencies
-        script: |
-          cd ios/App
-          pod install
-      - name: Add platform and copy web assets
+      - name: Sync Capacitor
         script: |
           npx cap sync ios
       - name: Build iOS (unsigned)
@@ -41,62 +37,14 @@ workflows:
             -derivedDataPath ../build \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            DEVELOPMENT_TEAM="" \
-            PROVISIONING_PROFILE_SPECIFIER=""
+            CODE_SIGNING_ALLOWED=NO
     artifacts:
       - ios/build/Build/Products/Release-iphoneos/*.app
       - ios/build/Build/Products/Release-iphoneos/*.ipa
-      - ios/App/**/*.ipa
     publishing:
       email:
         recipients:
-          - seuemail@gmail.com
-        notify:
-          success: true
-          failure: true
-
-  android-build:
-    name: Android Build
-    max_build_duration: 30
-    instance_type: mac_mini_m2
-    environment:
-      vars:
-        NODE_VERSION: "18"
-        CM_VERSION: "3.22.1"
-      node: latest
-      java: 17
-    triggering:
-      events:
-        - push
-        - tag
-      branch_patterns:
-        - pattern: main
-          include: true
-          source: true
-    scripts:
-      - name: Install Node dependencies
-        script: |
-          npm install --legacy-peer-deps
-      - name: Build web assets
-        script: |
-          npm run build
-      - name: Add Android platform
-        script: |
-          npx cap add android
-          npx cap sync android
-      - name: Build Android (unsigned)
-        script: |
-          cd android
-          chmod +x gradlew
-          ./gradlew assembleRelease
-    artifacts:
-      - android/app/build/outputs/**/*.apk
-      - android/app/build/outputs/**/*.aab
-    publishing:
-      email:
-        recipients:
-          - seuemail@gmail.com
+          - seu-email@gmail.com
         notify:
           success: true
           failure: true
