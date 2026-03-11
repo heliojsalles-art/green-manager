@@ -269,7 +269,7 @@ export default categoryService;
 EOF
           fi
       
-      # PASSO 6: Criar página Home (se não existir)
+      # PASSO 6: Criar página Home
       - name: Criar página Home
         script: | 
           if [ ! -f src/pages/Home.tsx ]; then
@@ -531,7 +531,6 @@ interface UserProfile {
   id: string;
   name: string;
   email: string;
-  avatar?: string;
   bio?: string;
   createdAt: Date;
 }
@@ -827,17 +826,12 @@ EOF
           echo "✅ Settings.tsx corrigido"
           fi
       
-      # PASSO 12: Corrigir App.tsx (remover 'exact')
+      # PASSO 12: Corrigir App.tsx
       - name: Corrigir App.tsx
         script: | 
           if [ -f src/App.tsx ]; then
             echo "🔧 Corrigindo App.tsx..."
-            cp src/App.tsx src/App.tsx.bak
-            
-            # Verificar se App.tsx já tem as importações corretas
-            if ! grep -q "import Dashboard" src/App.tsx; then
-              echo "📝 Atualizando importações no App.tsx..."
-              cat > src/App.tsx << 'EOF'
+            cat > src/App.tsx << 'EOF'
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Menu from './components/common/Menu';
@@ -871,11 +865,7 @@ const App: React.FC = () => {
 
 export default App;
 EOF
-            fi
-            
-            sed -i '' 's/ exact={true}//g' src/App.tsx
-            sed -i '' 's/ exact//g' src/App.tsx
-            echo "✅ App.tsx corrigido"
+          echo "✅ App.tsx corrigido"
           fi
       
       # PASSO 13: Instalar dependências
@@ -952,4 +942,4 @@ EOF
     publishing:
       email:
         recipients:
-          - heliojsalles@gmail.com
+          - seu-email@example.com
