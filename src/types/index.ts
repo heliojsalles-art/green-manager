@@ -2,27 +2,30 @@ export interface Reminder {
   id: string;
   title: string;
   description?: string;
-  dueDate?: Date;
-  completed: boolean;
-  completedAt?: Date;
-  createdAt: Date;
+  dueDate?: string;
+  completed: number;
+  completedAt?: string;
+  createdAt: string;
 }
 
 export interface ShoppingList {
   id: string;
   name: string;
-  items: ShoppingItem[];
-  createdAt: Date;
+  items?: ShoppingItem[];
+  created_at?: string;
+  createdAt?: string;
 }
 
 export interface ShoppingItem {
   id: string;
-  listId: string;
+  list_id: string;
   name: string;
   quantity?: string;
-  completed: boolean;
-  completedAt?: Date;
-  createdAt: Date;
+  completed: number;
+  completed_at?: string;
+  completedAt?: string;
+  created_at?: string;
+  createdAt?: string;
 }
 
 export interface FinanceCategory {
@@ -32,7 +35,8 @@ export interface FinanceCategory {
   icon?: string;
   color?: string;
   isDefault: boolean;
-  createdAt: Date;
+  created_at?: string;
+  createdAt?: string;
 }
 
 export interface Transaction {
@@ -41,8 +45,12 @@ export interface Transaction {
   amount: number;
   type: 'income' | 'expense';
   categoryId: string;
-  date: Date;
+  category_name?: string;
+  category_color?: string;
+  date: string;
   notes?: string;
+  created_at?: string;
+  createdAt?: string;
 }
 
 export interface BackupData {
@@ -50,7 +58,7 @@ export interface BackupData {
   timestamp: string;
   data: {
     reminders: Reminder[];
-    shoppingLists: ShoppingList[];
+    shoppingLists: any[];
     transactions: Transaction[];
     categories: FinanceCategory[];
   };
