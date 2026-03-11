@@ -19,10 +19,7 @@ import {
   IonCol,
   IonCard,
   IonCardContent,
-  IonModal,
-  IonInput,
-  IonSelect,
-  IonSelectOption
+  IonModal
 } from '@ionic/react';
 import {
   moonOutline,
@@ -30,21 +27,18 @@ import {
   cloudUploadOutline,
   cloudDownloadOutline,
   listOutline,
-  trashOutline,
-  addOutline,
-  colorPaletteOutline
+  trashOutline
 } from 'ionicons/icons';
-import { BackupService } from '@services/backup';
-import { CategoryService } from '@services/categories';
-import { DatabaseService } from '@services/database';
+import { BackupService } from '../services/backup';
+import { CategoryService } from '../services/categories';
+import { DatabaseService } from '../services/database';
 import { Preferences } from '@capacitor/preferences';
-import { greenTheme, darkTheme } from '@theme/colors';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 
 const Settings: React.FC = () => {
   const [darkMode, setDarkMode] = useState(false);
   const [showBackupModal, setShowBackupModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [showThemeModal, setShowThemeModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [showToast, setShowToast] = useState(false);
@@ -293,7 +287,7 @@ const Settings: React.FC = () => {
                     <h3>{cat.name}</h3>
                     <p>{cat.type === 'income' ? 'Receita' : 'Despesa'}</p>
                   </IonLabel>
-                  {!cat.is_default && (
+                  {!cat.isDefault && (
                     <IonButton fill="clear" color="danger">
                       <IonIcon icon={trashOutline} />
                     </IonButton>
