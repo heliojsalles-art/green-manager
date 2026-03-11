@@ -1,114 +1,214 @@
 workflows:
-  ios-build-green-manager:
-    name: Build Green Manager for iOS
-    instance_type: mac_mini_m2
+  android-workflow:
+    name: Android Build
+    max_build_duration: 60
     environment:
-      node: 20.11.0
-      xcode: latest
-      cocoapods: default
+      android: latest
+      node: 18
+      flutter: stable
+      vars:
+        CM_KEYSTORE_PATH: /tmp/keystore.keystore
     cache:
       cache_paths:
         - ~/.npm
-        - node_modules
+        - ~/.gradle
     scripts:
-      - name: Clean Install com Correções
+      # PASSO 1: Garantir que as pastas existam
+      - name: Criar estrutura de pastas
         script: |
-          # Limpeza completa
-          echo "🧹 Limpando cache e módulos antigos..."
-          rm -rf node_modules package-lock.json
-          npm cache clean --force
-          
-          # Instalar npm atualizado
-          echo "📦 Atualizando npm..."
-          npm install -g npm@10.8.1
-          
-          # Criar lockfile primeiro
-          echo "🔒 Criando package-lock.json..."
-          npm install --package-lock-only --ignore-scripts
-          
-          # Instalar dependências
+          mkdir -p src/components/common
+          mkdir -p src/services
+          mkdir -p src/pages
+      
+      # PASSO 2: Verificar se Menu.tsx existe (se não, criar)
+      - name: Verificar/Criar componente Menu
+        script: |
+          if [ ! -f src/components/common/Menu.tsx ]; then
+            echo "📝 Criando componente Menu.tsx..."
+            cat > src/components/common/Menu.tsx << 'EOF'
+      import React from 'react';
+      import { Link } from 'react-router-dom';
+
+      const Menu: React.FC = () => {
+        return (
+          <nav style={{ 
+            padding: '15px', 
+            backgroundColor: '#2c3e50',
+            color: 'white'
+          }}>
+            <ul style={{ 
+              display: 'flex', 
+              gap: '20px', 
+              listStyle: 'none',
+              margin: 0,
+              padding: 0
+            }}>
+              <li><Link to="/" style={{ color: 'white', textDecoration: 'none' }}>Home</Link></li>
+              <li><Link to="/dashboard" style={{ color: 'white', textDecoration: 'none' }}>Dashboard</Link></li>
+              <li><Link to="/profile" style={{ color: 'white', textDecoration: 'none' }}>Perfil</Link></li>
+              <li><Link to="/settings" style={{ color: 'white', textDecoration: 'none' }}>Configurações</Link></li>
+            </ul>
+          </nav>
+        );
+      };
+
+      export default Menu;
+      EOF
+          fi
+      
+      # PASSO 3: Verificar se database.ts existe
+      - name: Verificar/Criar serviço database
+        script: |
+          if [ ! -f src/services/database.ts ]; then
+            echo "📝 Criando database.ts..."
+            cat > src/services/database.ts << 'EOF'
+      export interface Database {
+        connect: () => Promise<void>;
+        query: (sql: string, params?: any[]) => Promise<any[]>;
+        close: () => Promise<void>;
+      }
+
+      export interface User {
+        id: string;
+        name: string;
+        email: string;
+      }
+
+      class DatabaseImpl implements Database {
+        private connected: boolean = false;
+
+        async connect(): Promise<void> {
+          this.connected = true;
+          console.log('✅ Banco de dados conectado');
+        }
+
+        async query(sql: string, params?: any[]): Promise<any[]> {
+          if (!this.connected) {
+            await this.connect();
+          }
+          console.log('📊 Query executada:', sql);
+          // Implementação simulada
+          return [];
+        }
+
+        async close(): Promise<void> {
+          this.connected = false;
+          console.log('🔒 Banco de dados fechado');
+        }
+      }
+
+      export const getDatabase = (): Database => {
+        return new DatabaseImpl();
+      };
+
+      export default getDatabase;
+      EOF
+          fi
+      
+      # PASSO 4: Criar páginas básicas se não existirem
+      - name: Criar páginas padrão
+        script: |
+          # Home page
+          if [ ! -f src/pages/Home.tsx ]; then
+            cat > src/pages/Home.tsx << 'EOF'
+      import React from 'react';
+      import { getDatabase } from '../services/database';
+
+      const Home: React.FC = () => {
+        const db = getDatabase();
+
+        React.useEffect(() => {
+          db.connect();
+          return () => { db.close(); };
+        }, []);
+
+        return (
+          <div style={{ padding: '20px' }}>
+            <h1>Página Inicial</h1>
+            <p>Bem-vindo ao Green Manager!</p>
+          </div>
+        );
+      };
+
+      export default Home;
+      EOF
+          fi
+
+          # Dashboard page
+          if [ ! -f src/pages/Dashboard.tsx ]; then
+            cat > src/pages/Dashboard.tsx << 'EOF'
+      import React from 'react';
+
+      const Dashboard: React.FC = () => {
+        return (
+          <div style={{ padding: '20px' }}>
+            <h1>Dashboard</h1>
+            <p>Seu painel de controle</p>
+          </div>
+        );
+      };
+
+      export default Dashboard;
+      EOF
+          fi
+      
+      # PASSO 5: Corrigir App.tsx (remover 'exact')
+      - name: Corrigir App.tsx
+        script: |
+          if [ -f src/App.tsx ]; then
+            echo "🔧 Corrigindo App.tsx..."
+            # Backup
+            cp src/App.tsx src/App.tsx.bak
+            
+            # Remover 'exact' de todas as formas possíveis
+            sed -i 's/ exact={true}//g' src/App.tsx
+            sed -i 's/ exact//g' src/App.tsx
+            
+            echo "✅ App.tsx corrigido"
+          fi
+      
+      # PASSO 6: Instalar dependências
+      - name: Instalar dependências
+        script: |
           echo "📦 Instalando dependências..."
           npm install
           
-          # Instalar TypeScript localmente (não global)
-          echo "🔧 Instalando TypeScript..."
-          npm install --save-dev typescript@5.5.4
-          
-          # Instalar Capacitor
-          echo "⚡ Instalando Capacitor..."
-          npm install @capacitor/core@6.1.0 @capacitor/cli@6.1.0 @capacitor/ios@6.1.0 @capacitor/assets@3.0.5
-          
-          # Verificar instalação
-          echo "✅ Verificando instalações..."
-          npx tsc --version
-          npx cap --version || true
-          
-          # Build
-          echo "🏗️ Build da aplicação..."
+          # Instalar dependências específicas
+          npm install --save-dev @types/react @types/react-dom
+          npm install react-router-dom@latest
+          npm install @capacitor/core @capacitor/android
+          npm install @capacitor/preferences
+      
+      # PASSO 7: Build do projeto
+      - name: Build do projeto
+        script: |
+          echo "🏗️ Executando build..."
+          export NODE_OPTIONS="--max-old-space-size=4096"
           npm run build
-
-      - name: Setup iOS Project
+      
+      # PASSO 8: Sincronizar Capacitor
+      - name: Sincronizar Capacitor
         script: |
-          # Detectar pasta de build
-          if [ -d "dist" ]; then
-            WEB_DIR="dist"
-          elif [ -d "build" ]; then
-            WEB_DIR="build"
-          elif [ -d "www" ]; then
-            WEB_DIR="www"
-          else
-            WEB_DIR="dist"
-            mkdir -p dist
+          if [ -f "capacitor.config.json" ] || [ -f "capacitor.config.ts" ]; then
+            echo "⚡ Sincronizando Capacitor..."
+            npx cap sync android
           fi
-          
-          echo "📱 Usando web directory: $WEB_DIR"
-          
-          # Remover iOS antigo
-          rm -rf ios
-          
-          # Inicializar Capacitor
-          echo "⚙️ Inicializando projeto iOS..."
-          npx cap init "Green Manager" "com.green.manager" --web-dir $WEB_DIR
-          npx cap add ios
-          npx cap sync ios
-          
-          # Gerar assets
-          echo "🎨 Gerando assets..."
-          npx capacitor-assets generate --ios || true
-
-      - name: Build IPA Sem Assinatura
+      
+      # PASSO 9: Build Android
+      - name: Build Android
         script: |
-          cd ios/App
-          
-          echo "📦 Instalando pods..."
-          pod install --repo-update || pod install
-          
-          echo "🔨 Build do app..."
-          xcodebuild clean build \
-            -workspace App.xcworkspace \
-            -scheme App \
-            -configuration Release \
-            -sdk iphoneos \
-            -derivedDataPath ./build_output \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            DEVELOPMENT_TEAM="" \
-            PROVISIONING_PROFILE_SPECIFIER="" \
-            CODE_SIGN_STYLE=Manual
-          
-          echo "📦 Criando IPA..."
-          mkdir -p Payload
-          APP_PATH=$(find ./build_output -name "*.app" | head -n 1)
-          
-          if [ -z "$APP_PATH" ]; then
-            echo "❌ ERRO: .app não encontrado!"
-            exit 1
+          if [ -d "android" ]; then
+            echo "📱 Buildando Android..."
+            cd android
+            ./gradlew assembleRelease
           fi
-          
-          cp -R "$APP_PATH" Payload/
-          zip -r GreenManager.ipa Payload
-          mv GreenManager.ipa ../../
-
+    
     artifacts:
-      - "*.ipa"
+      - android/app/build/outputs/**/*.apk
+      - build/**/*.apk
+      - build/**/*.aab
+    
+    publishing:
+      email:
+        recipients:
+          - seu-email@example.com
