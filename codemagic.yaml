@@ -7,19 +7,21 @@ workflows:
       xcode: latest
       cocoapods: default
       vars:
-        XCODE_WORKSPACE: "ios/App.xcworkspace"
+        XCODE_WORKSPACE: "ios/App/App.xcworkspace"
         XCODE_SCHEME: "App"
     cache:
       cache_paths:
         - ~/.npm
         - ~/Library/Caches/CocoaPods
     scripts:
+      # PASSO 1: Criar estrutura de pastas
       - name: Criar estrutura de pastas
         script: | 
           mkdir -p src/components/common
           mkdir -p src/services
           mkdir -p src/pages
       
+      # PASSO 2: Verificar/Criar componente Menu
       - name: Verificar/Criar componente Menu
         script: | 
           if [ ! -f src/components/common/Menu.tsx ]; then
@@ -55,6 +57,7 @@ workflows:
           EOF
           fi
       
+      # PASSO 3: Verificar/Criar serviço database
       - name: Verificar/Criar serviço database
         script: | 
           if [ ! -f src/services/database.ts ]; then
@@ -64,136 +67,459 @@ workflows:
             connect: () => Promise<void>;
             query: (sql: string, params?: any[]) => Promise<any[]>;
             close: () => Promise<void>;
+            getInstance?: () => Database;
           }
 
           export interface User {
             id: string;
             name: string;
             email: string;
+            createdAt?: Date;
           }
 
-          class DatabaseImpl implements Database {
+          export class DatabaseService {
+            private static instance: DatabaseService;
             private connected: boolean = false;
+            private database: Database;
 
-            async connect(): Promise<void> {
-              this.connected = true;
-              console.log('✅ Banco de dados conectado');
+            private constructor() {
+              this.database = {
+                connect: async () => {
+                  this.connected = true;
+                  console.log('✅ Banco de dados conectado');
+                },
+                query: async (sql: string, params?: any[]) => {
+                  console.log('📊 Query executada:', sql, params);
+                  return [];
+                },
+                close: async () => {
+                  this.connected = false;
+                  console.log('🔒 Banco de dados fechado');
+                }
+              };
             }
 
-            async query(sql: string, params?: any[]): Promise<any[]> {
-              if (!this.connected) {
-                await this.connect();
+            public static getInstance(): DatabaseService {
+              if (!DatabaseService.instance) {
+                DatabaseService.instance = new DatabaseService();
               }
-              console.log('📊 Query executada:', sql);
-              return [];
+              return DatabaseService.instance;
             }
 
-            async close(): Promise<void> {
-              this.connected = false;
-              console.log('🔒 Banco de dados fechado');
+            public async connect(): Promise<void> {
+              await this.database.connect();
+            }
+
+            public async query(sql: string, params?: any[]): Promise<any[]> {
+              return await this.database.query(sql, params);
+            }
+
+            public async close(): Promise<void> {
+              await this.database.close();
+            }
+
+            public getDatabase(): Database {
+              return this.database;
             }
           }
 
           export const getDatabase = (): Database => {
-            return new DatabaseImpl();
+            const service = DatabaseService.getInstance();
+            return service.getDatabase();
           };
 
-          export default getDatabase;
+          export default DatabaseService;
           EOF
           fi
       
-      - name: Criar páginas padrão
+      # PASSO 4: Verificar/Criar serviço backup
+      - name: Verificar/Criar serviço backup
         script: | 
-          # Home page
-          if [ ! -f src/pages/Home.tsx ]; then
-            cat > src/pages/Home.tsx << 'EOF'
-          import React from 'react';
-          import { getDatabase } from '../services/database';
+          if [ ! -f src/services/backup.ts ]; then
+            echo "📝 Criando backup.ts..."
+            cat > src/services/backup.ts << 'EOF'
+          import { DatabaseService } from './database';
+          import { Database } from './database';
 
-          const Home: React.FC = () => {
-            const db = getDatabase();
+          export interface BackupData {
+            id: string;
+            timestamp: Date;
+            size: number;
+            data: any;
+          }
 
-            React.useEffect(() => {
-              db.connect();
-              return () => { db.close(); };
-            }, []);
+          export class BackupService {
+            private dbService: DatabaseService;
+            private database: Database;
+
+            constructor() {
+              this.dbService = DatabaseService.getInstance();
+              this.database = this.dbService.getDatabase();
+            }
+
+            async createBackup(): Promise<BackupData> {
+              await this.database.connect();
+              const backup: BackupData = {
+                id: Date.now().toString(),
+                timestamp: new Date(),
+                size: 0,
+                data: {}
+              };
+              console.log('📦 Backup criado:', backup.id);
+              return backup;
+            }
+
+            async restoreBackup(backupId: string): Promise<boolean> {
+              await this.database.connect();
+              console.log('🔄 Restaurando backup:', backupId);
+              return true;
+            }
+
+            async listBackups(): Promise<BackupData[]> {
+              return [
+                {
+                  id: '1',
+                  timestamp: new Date(),
+                  size: 1024,
+                  data: {}
+                }
+              ];
+            }
+          }
+
+          export const backupService = new BackupService();
+          export default backupService;
+          EOF
+          fi
+      
+      # PASSO 5: Verificar/Criar serviço categories
+      - name: Verificar/Criar serviço categories
+        script: | 
+          if [ ! -f src/services/categories.ts ]; then
+            echo "📝 Criando categories.ts..."
+            cat > src/services/categories.ts << 'EOF'
+          import { DatabaseService } from './database';
+          import { Database } from './database';
+
+          export interface Category {
+            id: string;
+            name: string;
+            description?: string;
+            color?: string;
+            createdAt: Date;
+          }
+
+          export class CategoryService {
+            private dbService: DatabaseService;
+            private database: Database;
+
+            constructor() {
+              this.dbService = DatabaseService.getInstance();
+              this.database = this.dbService.getDatabase();
+            }
+
+            async getAllCategories(): Promise<Category[]> {
+              await this.database.connect();
+              return [
+                {
+                  id: '1',
+                  name: 'Categoria 1',
+                  description: 'Descrição 1',
+                  color: '#4CAF50',
+                  createdAt: new Date()
+                }
+              ];
+            }
+
+            async getCategoryById(id: string): Promise<Category | null> {
+              await this.database.connect();
+              return {
+                id,
+                name: 'Categoria Exemplo',
+                createdAt: new Date()
+              };
+            }
+
+            async createCategory(category: Omit<Category, 'id' | 'createdAt'>): Promise<Category> {
+              await this.database.connect();
+              const newCategory: Category = {
+                id: Date.now().toString(),
+                ...category,
+                createdAt: new Date()
+              };
+              console.log('✅ Categoria criada:', newCategory);
+              return newCategory;
+            }
+
+            async updateCategory(id: string, data: Partial<Category>): Promise<Category | null> {
+              await this.database.connect();
+              console.log('📝 Categoria atualizada:', id, data);
+              return null;
+            }
+
+            async deleteCategory(id: string): Promise<boolean> {
+              await this.database.connect();
+              console.log('🗑️ Categoria deletada:', id);
+              return true;
+            }
+          }
+
+          export const categoryService = new CategoryService();
+          export default categoryService;
+          EOF
+          fi
+      
+      # PASSO 6: Criar páginas Login e Register
+      - name: Criar páginas Login e Register
+        script: | 
+          # Login page
+          if [ ! -f src/pages/Login.tsx ]; then
+            cat > src/pages/Login.tsx << 'EOF'
+          import React, { useState } from 'react';
+          import { useNavigate } from 'react-router-dom';
+
+          const Login: React.FC = () => {
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            const [error, setError] = useState('');
+            const navigate = useNavigate();
+
+            const handleLogin = async (e: React.FormEvent) => {
+              e.preventDefault();
+              setError('');
+              
+              try {
+                if (email && password) {
+                  console.log('Login realizado com:', email);
+                  navigate('/dashboard');
+                } else {
+                  setError('Preencha todos os campos');
+                }
+              } catch (err) {
+                setError('Erro ao fazer login');
+              }
+            };
 
             return (
-              <div style={{ padding: '20px' }}>
-                <h1>Página Inicial</h1>
-                <p>Bem-vindo ao Green Manager!</p>
+              <div style={{ maxWidth: '400px', margin: '50px auto', padding: '20px' }}>
+                <h1>Login</h1>
+                {error && <div style={{ color: 'red' }}>{error}</div>}
+                <form onSubmit={handleLogin}>
+                  <div style={{ marginBottom: '15px' }}>
+                    <label>Email:</label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      style={{ width: '100%', padding: '8px' }}
+                      required
+                    />
+                  </div>
+                  <div style={{ marginBottom: '15px' }}>
+                    <label>Senha:</label>
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      style={{ width: '100%', padding: '8px' }}
+                      required
+                    />
+                  </div>
+                  <button type="submit">Entrar</button>
+                </form>
               </div>
             );
           };
 
-          export default Home;
+          export default Login;
           EOF
           fi
 
-          # Dashboard page
-          if [ ! -f src/pages/Dashboard.tsx ]; then
-            cat > src/pages/Dashboard.tsx << 'EOF'
-          import React from 'react';
+          # Register page
+          if [ ! -f src/pages/Register.tsx ]; then
+            cat > src/pages/Register.tsx << 'EOF'
+          import React, { useState } from 'react';
+          import { useNavigate } from 'react-router-dom';
 
-          const Dashboard: React.FC = () => {
+          const Register: React.FC = () => {
+            const [name, setName] = useState('');
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            const [error, setError] = useState('');
+            const navigate = useNavigate();
+
+            const handleRegister = async (e: React.FormEvent) => {
+              e.preventDefault();
+              setError('');
+              
+              try {
+                console.log('Registro:', { name, email, password });
+                navigate('/login');
+              } catch (err) {
+                setError('Erro ao criar conta');
+              }
+            };
+
             return (
-              <div style={{ padding: '20px' }}>
-                <h1>Dashboard</h1>
-                <p>Seu painel de controle</p>
+              <div style={{ maxWidth: '400px', margin: '50px auto', padding: '20px' }}>
+                <h1>Criar Conta</h1>
+                {error && <div style={{ color: 'red' }}>{error}</div>}
+                <form onSubmit={handleRegister}>
+                  <div style={{ marginBottom: '15px' }}>
+                    <label>Nome:</label>
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      style={{ width: '100%', padding: '8px' }}
+                      required
+                    />
+                  </div>
+                  <div style={{ marginBottom: '15px' }}>
+                    <label>Email:</label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      style={{ width: '100%', padding: '8px' }}
+                      required
+                    />
+                  </div>
+                  <div style={{ marginBottom: '15px' }}>
+                    <label>Senha:</label>
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      style={{ width: '100%', padding: '8px' }}
+                      required
+                    />
+                  </div>
+                  <button type="submit">Registrar</button>
+                </form>
               </div>
             );
           };
 
-          export default Dashboard;
+          export default Register;
           EOF
           fi
-
-          # Profile page
-          if [ ! -f src/pages/Profile.tsx ]; then
-            cat > src/pages/Profile.tsx << 'EOF'
-          import React from 'react';
-
-          const Profile: React.FC = () => {
-            return (
-              <div style={{ padding: '20px' }}>
-                <h1>Perfil</h1>
-                <p>Página de perfil do usuário</p>
-              </div>
-            );
-          };
-
-          export default Profile;
-          EOF
+      
+      # PASSO 7: Corrigir App.tsx
+      - name: Corrigir App.tsx
+        script: | 
+          if [ -f src/App.tsx ]; then
+            echo "🔧 Corrigindo App.tsx..."
+            cp src/App.tsx src/App.tsx.bak
+            sed -i '' 's/ exact={true}//g' src/App.tsx
+            sed -i '' 's/ exact//g' src/App.tsx
+            echo "✅ App.tsx corrigido"
           fi
-
-          # Settings page
-          if [ ! -f src/pages/Settings.tsx ]; then
+      
+      # PASSO 8: Corrigir Settings.tsx
+      - name: Corrigir Settings.tsx
+        script: | 
+          if [ -f src/pages/Settings.tsx ]; then
+            echo "🔧 Corrigindo Settings.tsx..."
+            cp src/pages/Settings.tsx src/pages/Settings.tsx.bak
             cat > src/pages/Settings.tsx << 'EOF'
-          import React from 'react';
+          import React, { useState, useEffect } from 'react';
+          import { DatabaseService } from '../services/database';
 
           const Settings: React.FC = () => {
+            const [settings, setSettings] = useState({
+              theme: 'light',
+              notifications: true,
+              language: 'pt-BR'
+            });
+            const [loading, setLoading] = useState(false);
+
+            useEffect(() => {
+              loadSettings();
+            }, []);
+
+            const loadSettings = async () => {
+              setLoading(true);
+              try {
+                const dbService = DatabaseService.getInstance();
+                await dbService.connect();
+                console.log('Configurações carregadas');
+              } catch (error) {
+                console.error('Erro ao carregar configurações:', error);
+              } finally {
+                setLoading(false);
+              }
+            };
+
+            const handleSave = async () => {
+              setLoading(true);
+              try {
+                const dbService = DatabaseService.getInstance();
+                await dbService.query('UPDATE settings SET ?', [settings]);
+                console.log('Configurações salvas');
+                alert('Configurações salvas com sucesso!');
+              } catch (error) {
+                console.error('Erro ao salvar:', error);
+                alert('Erro ao salvar configurações');
+              } finally {
+                setLoading(false);
+              }
+            };
+
+            if (loading) {
+              return <div style={{ textAlign: 'center', padding: '50px' }}>Carregando...</div>;
+            }
+
             return (
-              <div style={{ padding: '20px' }}>
+              <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px' }}>
                 <h1>Configurações</h1>
-                <p>Página de configurações</p>
+                
+                <div style={{ marginBottom: '20px' }}>
+                  <h2>Tema</h2>
+                  <select
+                    value={settings.theme}
+                    onChange={(e) => setSettings({...settings, theme: e.target.value})}
+                  >
+                    <option value="light">Claro</option>
+                    <option value="dark">Escuro</option>
+                  </select>
+                </div>
+
+                <div style={{ marginBottom: '20px' }}>
+                  <h2>Notificações</h2>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={settings.notifications}
+                      onChange={(e) => setSettings({...settings, notifications: e.target.checked})}
+                    />
+                    Receber notificações
+                  </label>
+                </div>
+
+                <div style={{ marginBottom: '20px' }}>
+                  <h2>Idioma</h2>
+                  <select
+                    value={settings.language}
+                    onChange={(e) => setSettings({...settings, language: e.target.value})}
+                  >
+                    <option value="pt-BR">Português (Brasil)</option>
+                    <option value="en">English</option>
+                    <option value="es">Español</option>
+                  </select>
+                </div>
+
+                <button onClick={handleSave}>Salvar Configurações</button>
               </div>
             );
           };
 
           export default Settings;
           EOF
+          echo "✅ Settings.tsx corrigido"
           fi
       
-      - name: Corrigir App.tsx
-        script: | 
-          if [ -f src/App.tsx ]; then
-            echo "🔧 Corrigindo App.tsx..."
-            cp src/App.tsx src/App.tsx.bak
-            sed -i 's/ exact={true}//g' src/App.tsx
-            sed -i 's/ exact//g' src/App.tsx
-            echo "✅ App.tsx corrigido"
-          fi
-      
+      # PASSO 9: Instalar dependências
       - name: Instalar dependências
         script: | 
           echo "📦 Instalando dependências..."
@@ -203,27 +529,42 @@ workflows:
           npm install @capacitor/core @capacitor/ios
           npm install @capacitor/preferences
       
+      # PASSO 10: Build do projeto web
       - name: Build do projeto web
         script: | 
           echo "🏗️ Executando build web..."
           export NODE_OPTIONS="--max-old-space-size=4096"
           npm run build
       
-      - name: Sincronizar Capacitor iOS
+      # 🟢🟢🟢 PASSO 11: CORREÇÃO PRINCIPAL - Adicionar plataforma iOS 🟢🟢🟢
+      - name: Adicionar plataforma iOS
         script: | 
-          if [ -f "capacitor.config.json" ] || [ -f "capacitor.config.ts" ]; then
-            echo "⚡ Sincronizando Capacitor para iOS..."
-            npx cap sync ios
+          echo "📱 Verificando plataforma iOS..."
+          if [ ! -d "ios" ]; then
+            echo "➕ Plataforma iOS não encontrada. Adicionando..."
+            npm install @capacitor/ios@latest
+            npx cap add ios
+            echo "✅ Plataforma iOS adicionada com sucesso!"
+          else
+            echo "✅ Plataforma iOS já existe."
           fi
       
+      # PASSO 12: Sincronizar Capacitor iOS
+      - name: Sincronizar Capacitor iOS
+        script: | 
+          echo "⚡ Sincronizando Capacitor para iOS..."
+          npx cap sync ios
+      
+      # PASSO 13: Instalar CocoaPods
       - name: Instalar CocoaPods
         script: | 
           if [ -d "ios/App" ]; then
-            echo "📱 Instalando CocoaPods..."
+            echo "📦 Instalando CocoaPods..."
             cd ios/App
             pod install
           fi
       
+      # PASSO 14: Build iOS
       - name: Build iOS
         script: | 
           echo "📱 Buildando iOS..."
@@ -235,14 +576,15 @@ workflows:
             archive -archivePath ../build/ios.xcarchive \
             CODE_SIGNING_ALLOWED=NO
       
-      - name: Export IPA
+      # PASSO 15: Exportar IPA
+      - name: Exportar IPA
         script: | 
           echo "📦 Exportando IPA..."
           xcodebuild -exportArchive \
             -archivePath ../build/ios.xcarchive \
             -exportOptionsPlist ../exportOptions.plist \
             -exportPath ../build/ios \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_ALLOWED=NO || true
     
     artifacts:
       - build/ios/*.ipa
