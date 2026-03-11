@@ -1,4 +1,3 @@
-import { Capacitor } from '@capacitor/core';
 import { CapacitorSQLite, SQLiteConnection, SQLiteDBConnection } from '@capacitor-community/sqlite';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -24,12 +23,12 @@ export class DatabaseService {
 
     try {
       // Criar conexão
-      const db = await this.sqlite.createConnection(
+      await this.sqlite.createConnection(
         'greenmanager',
         false,
         'no-encryption',
         1,
-        1
+        false
       );
 
       this.db = await this.sqlite.retrieveConnection('greenmanager', false);
