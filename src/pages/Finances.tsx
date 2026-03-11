@@ -1,6 +1,5 @@
 import { IonContent, IonPage, IonHeader, IonToolbar, IonTitle } from '@ionic/react';
-import { useState, useEffect } from 'react';
-// REMOVIDO: walletOutline não utilizado
+import { useState } from 'react';
 
 interface Transaction {
   id: string;
@@ -8,17 +7,13 @@ interface Transaction {
   amount: number;
   type: 'income' | 'expense';
   category: string;
-  category_name: string; // ADICIONADO
-  createdAt: Date; // ADICIONADO
+  category_name?: string;
+  createdAt?: Date;
   date: string;
 }
 
 const Finances: React.FC = () => {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-
-  useEffect(() => {
-    // Carregar transações
-  }, []);
+  const [transactions] = useState<Transaction[]>([]);
 
   return (
     <IonPage>
@@ -28,7 +23,8 @@ const Finances: React.FC = () => {
         </IonToolbar>
       </IonHeader>
       <IonContent className="ion-padding">
-        {/* Conteúdo da página de finanças */}
+        <h2>Finanças</h2>
+        {/* Seu conteúdo aqui */}
       </IonContent>
     </IonPage>
   );
