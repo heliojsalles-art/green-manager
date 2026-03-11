@@ -13,190 +13,174 @@ workflows:
         - ~/.npm
         - ~/.gradle
     scripts:
-      # PASSO 1: Garantir que as pastas existam
       - name: Criar estrutura de pastas
-        script: |
+        script: | 
           mkdir -p src/components/common
           mkdir -p src/services
           mkdir -p src/pages
       
-      # PASSO 2: Verificar se Menu.tsx existe (se não, criar)
       - name: Verificar/Criar componente Menu
-        script: |
+        script: | 
           if [ ! -f src/components/common/Menu.tsx ]; then
             echo "📝 Criando componente Menu.tsx..."
             cat > src/components/common/Menu.tsx << 'EOF'
-      import React from 'react';
-      import { Link } from 'react-router-dom';
+          import React from 'react';
+          import { Link } from 'react-router-dom';
 
-      const Menu: React.FC = () => {
-        return (
-          <nav style={{ 
-            padding: '15px', 
-            backgroundColor: '#2c3e50',
-            color: 'white'
-          }}>
-            <ul style={{ 
-              display: 'flex', 
-              gap: '20px', 
-              listStyle: 'none',
-              margin: 0,
-              padding: 0
-            }}>
-              <li><Link to="/" style={{ color: 'white', textDecoration: 'none' }}>Home</Link></li>
-              <li><Link to="/dashboard" style={{ color: 'white', textDecoration: 'none' }}>Dashboard</Link></li>
-              <li><Link to="/profile" style={{ color: 'white', textDecoration: 'none' }}>Perfil</Link></li>
-              <li><Link to="/settings" style={{ color: 'white', textDecoration: 'none' }}>Configurações</Link></li>
-            </ul>
-          </nav>
-        );
-      };
+          const Menu: React.FC = () => {
+            return (
+              <nav style={{ 
+                padding: '15px', 
+                backgroundColor: '#2c3e50',
+                color: 'white'
+              }}>
+                <ul style={{ 
+                  display: 'flex', 
+                  gap: '20px', 
+                  listStyle: 'none',
+                  margin: 0,
+                  padding: 0
+                }}>
+                  <li><Link to="/" style={{ color: 'white', textDecoration: 'none' }}>Home</Link></li>
+                  <li><Link to="/dashboard" style={{ color: 'white', textDecoration: 'none' }}>Dashboard</Link></li>
+                  <li><Link to="/profile" style={{ color: 'white', textDecoration: 'none' }}>Perfil</Link></li>
+                  <li><Link to="/settings" style={{ color: 'white', textDecoration: 'none' }}>Configurações</Link></li>
+                </ul>
+              </nav>
+            );
+          };
 
-      export default Menu;
-      EOF
+          export default Menu;
+          EOF
           fi
       
-      # PASSO 3: Verificar se database.ts existe
       - name: Verificar/Criar serviço database
-        script: |
+        script: | 
           if [ ! -f src/services/database.ts ]; then
             echo "📝 Criando database.ts..."
             cat > src/services/database.ts << 'EOF'
-      export interface Database {
-        connect: () => Promise<void>;
-        query: (sql: string, params?: any[]) => Promise<any[]>;
-        close: () => Promise<void>;
-      }
-
-      export interface User {
-        id: string;
-        name: string;
-        email: string;
-      }
-
-      class DatabaseImpl implements Database {
-        private connected: boolean = false;
-
-        async connect(): Promise<void> {
-          this.connected = true;
-          console.log('✅ Banco de dados conectado');
-        }
-
-        async query(sql: string, params?: any[]): Promise<any[]> {
-          if (!this.connected) {
-            await this.connect();
+          export interface Database {
+            connect: () => Promise<void>;
+            query: (sql: string, params?: any[]) => Promise<any[]>;
+            close: () => Promise<void>;
           }
-          console.log('📊 Query executada:', sql);
-          // Implementação simulada
-          return [];
-        }
 
-        async close(): Promise<void> {
-          this.connected = false;
-          console.log('🔒 Banco de dados fechado');
-        }
-      }
+          export interface User {
+            id: string;
+            name: string;
+            email: string;
+          }
 
-      export const getDatabase = (): Database => {
-        return new DatabaseImpl();
-      };
+          class DatabaseImpl implements Database {
+            private connected: boolean = false;
 
-      export default getDatabase;
-      EOF
+            async connect(): Promise<void> {
+              this.connected = true;
+              console.log('✅ Banco de dados conectado');
+            }
+
+            async query(sql: string, params?: any[]): Promise<any[]> {
+              if (!this.connected) {
+                await this.connect();
+              }
+              console.log('📊 Query executada:', sql);
+              return [];
+            }
+
+            async close(): Promise<void> {
+              this.connected = false;
+              console.log('🔒 Banco de dados fechado');
+            }
+          }
+
+          export const getDatabase = (): Database => {
+            return new DatabaseImpl();
+          };
+
+          export default getDatabase;
+          EOF
           fi
       
-      # PASSO 4: Criar páginas básicas se não existirem
       - name: Criar páginas padrão
-        script: |
+        script: | 
           # Home page
           if [ ! -f src/pages/Home.tsx ]; then
             cat > src/pages/Home.tsx << 'EOF'
-      import React from 'react';
-      import { getDatabase } from '../services/database';
+          import React from 'react';
+          import { getDatabase } from '../services/database';
 
-      const Home: React.FC = () => {
-        const db = getDatabase();
+          const Home: React.FC = () => {
+            const db = getDatabase();
 
-        React.useEffect(() => {
-          db.connect();
-          return () => { db.close(); };
-        }, []);
+            React.useEffect(() => {
+              db.connect();
+              return () => { db.close(); };
+            }, []);
 
-        return (
-          <div style={{ padding: '20px' }}>
-            <h1>Página Inicial</h1>
-            <p>Bem-vindo ao Green Manager!</p>
-          </div>
-        );
-      };
+            return (
+              <div style={{ padding: '20px' }}>
+                <h1>Página Inicial</h1>
+                <p>Bem-vindo ao Green Manager!</p>
+              </div>
+            );
+          };
 
-      export default Home;
-      EOF
+          export default Home;
+          EOF
           fi
 
           # Dashboard page
           if [ ! -f src/pages/Dashboard.tsx ]; then
             cat > src/pages/Dashboard.tsx << 'EOF'
-      import React from 'react';
+          import React from 'react';
 
-      const Dashboard: React.FC = () => {
-        return (
-          <div style={{ padding: '20px' }}>
-            <h1>Dashboard</h1>
-            <p>Seu painel de controle</p>
-          </div>
-        );
-      };
+          const Dashboard: React.FC = () => {
+            return (
+              <div style={{ padding: '20px' }}>
+                <h1>Dashboard</h1>
+                <p>Seu painel de controle</p>
+              </div>
+            );
+          };
 
-      export default Dashboard;
-      EOF
+          export default Dashboard;
+          EOF
           fi
       
-      # PASSO 5: Corrigir App.tsx (remover 'exact')
       - name: Corrigir App.tsx
-        script: |
+        script: | 
           if [ -f src/App.tsx ]; then
             echo "🔧 Corrigindo App.tsx..."
-            # Backup
             cp src/App.tsx src/App.tsx.bak
-            
-            # Remover 'exact' de todas as formas possíveis
             sed -i 's/ exact={true}//g' src/App.tsx
             sed -i 's/ exact//g' src/App.tsx
-            
             echo "✅ App.tsx corrigido"
           fi
       
-      # PASSO 6: Instalar dependências
       - name: Instalar dependências
-        script: |
+        script: | 
           echo "📦 Instalando dependências..."
           npm install
-          
-          # Instalar dependências específicas
           npm install --save-dev @types/react @types/react-dom
           npm install react-router-dom@latest
           npm install @capacitor/core @capacitor/android
           npm install @capacitor/preferences
       
-      # PASSO 7: Build do projeto
       - name: Build do projeto
-        script: |
+        script: | 
           echo "🏗️ Executando build..."
           export NODE_OPTIONS="--max-old-space-size=4096"
           npm run build
       
-      # PASSO 8: Sincronizar Capacitor
       - name: Sincronizar Capacitor
-        script: |
+        script: | 
           if [ -f "capacitor.config.json" ] || [ -f "capacitor.config.ts" ]; then
             echo "⚡ Sincronizando Capacitor..."
             npx cap sync android
           fi
       
-      # PASSO 9: Build Android
       - name: Build Android
-        script: |
+        script: | 
           if [ -d "android" ]; then
             echo "📱 Buildando Android..."
             cd android
