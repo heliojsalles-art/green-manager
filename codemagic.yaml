@@ -1,17 +1,18 @@
 workflows:
-  android-workflow:
-    name: Android Build
+  ios-workflow:
+    name: iOS Build
     max_build_duration: 60
     environment:
-      android: latest
       node: 18
-      flutter: stable
+      xcode: latest
+      cocoapods: default
       vars:
-        CM_KEYSTORE_PATH: /tmp/keystore.keystore
+        XCODE_WORKSPACE: "ios/App.xcworkspace"
+        XCODE_SCHEME: "App"
     cache:
       cache_paths:
         - ~/.npm
-        - ~/.gradle
+        - ~/Library/Caches/CocoaPods
     scripts:
       - name: Criar estrutura de pastas
         script: | 
@@ -146,6 +147,42 @@ workflows:
           export default Dashboard;
           EOF
           fi
+
+          # Profile page
+          if [ ! -f src/pages/Profile.tsx ]; then
+            cat > src/pages/Profile.tsx << 'EOF'
+          import React from 'react';
+
+          const Profile: React.FC = () => {
+            return (
+              <div style={{ padding: '20px' }}>
+                <h1>Perfil</h1>
+                <p>Página de perfil do usuário</p>
+              </div>
+            );
+          };
+
+          export default Profile;
+          EOF
+          fi
+
+          # Settings page
+          if [ ! -f src/pages/Settings.tsx ]; then
+            cat > src/pages/Settings.tsx << 'EOF'
+          import React from 'react';
+
+          const Settings: React.FC = () => {
+            return (
+              <div style={{ padding: '20px' }}>
+                <h1>Configurações</h1>
+                <p>Página de configurações</p>
+              </div>
+            );
+          };
+
+          export default Settings;
+          EOF
+          fi
       
       - name: Corrigir App.tsx
         script: | 
@@ -163,34 +200,53 @@ workflows:
           npm install
           npm install --save-dev @types/react @types/react-dom
           npm install react-router-dom@latest
-          npm install @capacitor/core @capacitor/android
+          npm install @capacitor/core @capacitor/ios
           npm install @capacitor/preferences
       
-      - name: Build do projeto
+      - name: Build do projeto web
         script: | 
-          echo "🏗️ Executando build..."
+          echo "🏗️ Executando build web..."
           export NODE_OPTIONS="--max-old-space-size=4096"
           npm run build
       
-      - name: Sincronizar Capacitor
+      - name: Sincronizar Capacitor iOS
         script: | 
           if [ -f "capacitor.config.json" ] || [ -f "capacitor.config.ts" ]; then
-            echo "⚡ Sincronizando Capacitor..."
-            npx cap sync android
+            echo "⚡ Sincronizando Capacitor para iOS..."
+            npx cap sync ios
           fi
       
-      - name: Build Android
+      - name: Instalar CocoaPods
         script: | 
-          if [ -d "android" ]; then
-            echo "📱 Buildando Android..."
-            cd android
-            ./gradlew assembleRelease
+          if [ -d "ios/App" ]; then
+            echo "📱 Instalando CocoaPods..."
+            cd ios/App
+            pod install
           fi
+      
+      - name: Build iOS
+        script: | 
+          echo "📱 Buildando iOS..."
+          cd ios
+          xcodebuild -workspace "App.xcworkspace" \
+            -scheme "App" \
+            -sdk iphoneos \
+            -configuration Release \
+            archive -archivePath ../build/ios.xcarchive \
+            CODE_SIGNING_ALLOWED=NO
+      
+      - name: Export IPA
+        script: | 
+          echo "📦 Exportando IPA..."
+          xcodebuild -exportArchive \
+            -archivePath ../build/ios.xcarchive \
+            -exportOptionsPlist ../exportOptions.plist \
+            -exportPath ../build/ios \
+            CODE_SIGNING_ALLOWED=NO
     
     artifacts:
-      - android/app/build/outputs/**/*.apk
-      - build/**/*.apk
-      - build/**/*.aab
+      - build/ios/*.ipa
+      - build/**/*.ipa
     
     publishing:
       email:
