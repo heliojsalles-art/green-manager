@@ -1,69 +1,46 @@
-import React, { useEffect } from 'react';
-import { IonApp, IonRouterOutlet, IonSplitPane, setupIonicReact } from '@ionic/react';
-import { IonReactRouter } from '@ionic/react-router';
-import { Route } from 'react-router-dom';
-
-// Importar páginas
-import Home from './pages/Home';
-import Reminders from './pages/Reminders';
-import ShoppingLists from './pages/ShoppingLists';
-import Finances from './pages/Finances';
-import Settings from './pages/Settings';
-
-// Importar componentes
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Menu from './components/common/Menu';
 
-// Importar serviços
-import { DatabaseService } from './services/database';
-
-import '@ionic/react/css/core.css';
-import '@ionic/react/css/normalize.css';
-import '@ionic/react/css/structure.css';
-import '@ionic/react/css/typography.css';
-import '@ionic/react/css/padding.css';
-import '@ionic/react/css/float-elements.css';
-import '@ionic/react/css/text-alignment.css';
-import '@ionic/react/css/text-transformation.css';
-import '@ionic/react/css/flex-utils.css';
-import '@ionic/react/css/display.css';
-import './App.css';
-
-setupIonicReact();
+// Importação das páginas (ajuste os paths conforme seu projeto)
+import Home from './pages/Home';
+import Dashboard from './pages/Dashboard';
+import Profile from './pages/Profile';
+import Settings from './pages/Settings';
+import Login from './pages/Login';
+import Register from './pages/Register';
 
 const App: React.FC = () => {
-  useEffect(() => {
-    const initApp = async () => {
-      try {
-        const db = DatabaseService.getInstance();
-        await db.initDB();
-        
-        // Configurar limpeza automática (24h)
-        setInterval(() => {
-          db.cleanupCompletedItems();
-        }, 60 * 60 * 1000);
-      } catch (error) {
-        console.error('Erro ao inicializar app:', error);
-      }
-    };
-    
-    initApp();
-  }, []);
-
   return (
-    <IonApp>
-      <IonReactRouter>
-        <IonSplitPane contentId="main">
-          <Menu />
-          <IonRouterOutlet id="main">
-            <Route path="/" exact={true} component={Home} />
-            <Route path="/reminders" exact={true} component={Reminders} />
-            <Route path="/shopping" exact={true} component={ShoppingLists} />
-            <Route path="/finances" exact={true} component={Finances} />
-            <Route path="/settings" exact={true} component={Settings} />
-          </IonRouterOutlet>
-        </IonSplitPane>
-      </IonReactRouter>
-    </IonApp>
+    <Router>
+      <div className="app">
+        <Menu />
+        <main className="content">
+          <Routes>
+            {/* REMOVIDO o 'exact' de todas as rotas */}
+            <Route path="/" element={<Home />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            
+            {/* Rota para 404 - Página não encontrada */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </main>
+      </div>
+    </Router>
+  );
+};
+
+// Componente para página não encontrada
+const NotFound: React.FC = () => {
+  return (
+    <div style={{ textAlign: 'center', padding: '50px' }}>
+      <h1>404 - Página Não Encontrada</h1>
+      <p>A página que você está procurando não existe.</p>
+    </div>
   );
 };
 
